@@ -1,7 +1,7 @@
 # Native JSON in JDK 28
 
-The JDK is getting its own JSON API. These small programs use it to parse a todo list, turn
-JSON into Java records, and turn records back into JSON. No Jackson or any other library.
+The JDK is getting its own JSON API. This demo uses it to turn a JSON todo list into Java
+records, and to turn records back into JSON. No Jackson or any other library.
 
 ## Tested with
 
@@ -23,11 +23,7 @@ sdk use java 28.ea.19-open
 
 Without SDKMAN, point `JAVA_HOME` at the JDK and put its `bin` folder first on your `PATH`.
 
-Then run any of the programs:
-
-```sh
-java --add-modules jdk.incubator.json NativeJsonDemo.java
-```
+Then run either program:
 
 ```sh
 java --add-modules jdk.incubator.json DeserializeTodos.java
@@ -43,43 +39,33 @@ needed. Each run starts with a warning that an incubator module is in use. That 
 
 ## Where to look
 
-Start with [NativeJsonDemo.java](NativeJsonDemo.java). It covers the whole API in three steps:
+Start with [Todo.java](Todo.java). It's a record that maps a todo to and from JSON by hand:
 
-1. **Parse.** `Json.parse(String)` turns a JSON text block into a `JsonValue`.
-2. **Read.** `get("owner")` reads a member. `asString()`, `asBoolean()`, and `asList()`
-   convert values to Java types, so you can loop over the todos like any other list.
-3. **Write.** `JsonString.of` and `JsonNumber.of` build new values. `JsonObject.of(map)` turns
-   them into an object. `Json.toDisplayString(value, "  ")` prints it indented.
+- `Todo.from(JsonValue)` reads each field with `get("title")`, then converts it with
+  `asString()`, `asInt()`, `asBoolean()`, or `asList()`. A `due` date can be missing or
+  `null`, so it uses `tryGet("due")` for a missing member and `tryValue()` for a `null` one.
+- `toJson()` builds each field with `JsonNumber.of`, `JsonString.of`, `JsonBoolean.of`,
+  `JsonArray.of`, and `JsonNull.of`, then wraps them with `JsonObject.of`.
 
-It prints:
+Then run the two programs that use it.
+
+[DeserializeTodos.java](DeserializeTodos.java) goes from JSON to Java. `Json.parse` turns a
+JSON text block into a `JsonValue`, and `Todo::from` maps the `todos` array to a `List<Todo>`.
+It prints the owner, then one line per todo:
 
 ```text
-Dan's todos:
-[x] Try the new JSON API
-[ ] Record the video
-{
-  "owner": "Dan",
-  "total": 2,
-  "done": 1,
-  "status": "keep going"
-}
+Dan
+Todo[id=1, title=Try the new JSON API, done=true, priority=2, tags=[java, jdk28], due=null]
+Todo[id=2, title=Record the video, done=false, priority=1, tags=[youtube], due=2026-10-20]
+Todo[id=3, title=Write the blog post, done=false, priority=3, tags=[], due=null]
 ```
 
-Then look at the other three files. They show how to work with your own types.
+[SerializeTodos.java](SerializeTodos.java) goes from Java to JSON. It turns a `List<Todo>` into
+a `JsonArray`, then prints it twice: compact with `toString()`, then indented with
+`Json.toDisplayString(json, "  ")`. One title contains quotes, and the output escapes them for
+you.
 
-- [Todo.java](Todo.java) is a record that does the mapping by hand, in both directions.
-  `Todo.from(JsonValue)` reads each field. A `due` date can be missing or `null`, so it uses
-  `tryGet("due")` for a missing member and `tryValue()` for a `null` one. `toJson()` builds
-  each field with `JsonNumber.of`, `JsonString.of`, `JsonBoolean.of`, `JsonArray.of`, and
-  `JsonNull.of`.
-- [DeserializeTodos.java](DeserializeTodos.java) parses a todo list and maps it to a
-  `List<Todo>` with `Todo::from`. It prints the owner, then one line per todo:
-  `Todo[id=1, title=Try the new JSON API, done=true, ...]`.
-- [SerializeTodos.java](SerializeTodos.java) goes the other way. It turns a `List<Todo>` into
-  a `JsonArray`, then prints it twice: compact with `toString()`, then indented. One title
-  contains quotes, and the output escapes them for you.
-
-The programs are compact source files (`void main()`, no class). That keeps the focus on the
+Both programs are compact source files (`void main()`, no class). That keeps the focus on the
 JSON code.
 
 ## What JEP 540 adds
