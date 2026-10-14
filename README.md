@@ -29,7 +29,7 @@ Then run the getting-started example:
 java --add-modules jdk.incubator.json GettingStarted.java
 ```
 
-The other examples live in two packages. Run them from the project root:
+The other examples live in three packages. Run them from the project root:
 
 ```sh
 java --add-modules jdk.incubator.json todo/DeserializeTodos.java
@@ -41,6 +41,18 @@ java --add-modules jdk.incubator.json todo/SerializeTodos.java
 
 ```sh
 java --add-modules jdk.incubator.json posts/FetchPosts.java
+```
+
+```sh
+java --add-modules jdk.incubator.json features/PatternMatching.java
+```
+
+```sh
+java --add-modules jdk.incubator.json features/ErrorMessages.java
+```
+
+```sh
+java --add-modules jdk.incubator.json features/Numbers.java
 ```
 
 Java compiles and runs the file in one step, and finds the other files in its package on its
@@ -106,6 +118,47 @@ Fetched 100 posts
 
 This one needs an internet connection.
 
+### Features: what makes this API different
+
+The [features](features) package has three short programs, one per feature.
+
+[PatternMatching.java](features/PatternMatching.java) uses a `switch` over the six JSON types.
+`JsonValue` is a sealed interface, so the compiler knows every case is covered and no
+`default` branch is needed. A second `switch` handles a `tags` field that can be either a
+string or an array:
+
+```text
+string: Java
+number: 28
+...
+One tag: [java]
+Many tags: [java, jdk28]
+```
+
+[ErrorMessages.java](features/ErrorMessages.java) breaks JSON on purpose. A missing member, a
+wrong type, or a bad index throws `JsonValueException`. Comments, trailing commas, single
+quotes, and duplicate keys throw `JsonParseException`, because the parser accepts standard
+JSON only. Each message includes a path and a location:
+
+```text
+Wrong type: JsonString is not a JsonNumber. Path: "{title". Location: line 0, position 19.
+Duplicate key: Duplicate member name: "id" was already parsed. Path: "{". Location: line 0, position 10.
+```
+
+`JsonParseException` also has `getErrorLine()` and `getErrorPosition()`. Line numbers start
+at 0.
+
+[Numbers.java](features/Numbers.java) shows that a `JsonNumber` keeps the exact number from
+the JSON text. `asInt()` refuses a value that doesn't fit, and `new BigInteger(n.toString())`
+reads a number too big for a `long`. Adding prices with `BigDecimal` stays exact, where
+`double` does not:
+
+```text
+total with double: 0.30000000000000004
+total with BigDecimal: 0.30
+{"total":0.30}
+```
+
 ## What JEP 540 adds
 
 [JEP 540: Simple JSON API (Incubator)](https://openjdk.org/jeps/540) ships in JDK 28. It gives
@@ -142,6 +195,8 @@ The JEP keeps the API small on purpose. It leaves out:
   build. Treat it as an experiment.
 - `Json.parse` takes a `String` or `char[]`. Read a file into a string first.
 - `asMap()` and `asList()` return unmodifiable collections.
+- `JsonValue` doesn't compare by value. Two values parsed from the same text are not `equals`.
+  To compare, convert to Java values first, for example with `asString()` or `asInt()`.
 - Invalid JSON throws `JsonParseException`. A missing member, the wrong type, or a bad index
   throws `JsonValueException`.
 - In IntelliJ, set the project SDK to the JDK 28 build. Add `--add-modules jdk.incubator.json`
