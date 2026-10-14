@@ -1,7 +1,7 @@
 # Native JSON in JDK 28
 
-The JDK is getting its own JSON API. This demo uses it to turn a JSON todo list into Java
-records, and to turn records back into JSON. No Jackson or any other library.
+The JDK is getting its own JSON API. These examples use it to parse JSON, map it to Java
+records and back, and read JSON from a real API. No Jackson or any other library.
 
 ## Tested with
 
@@ -23,23 +23,50 @@ sdk use java 28.ea.19-open
 
 Without SDKMAN, point `JAVA_HOME` at the JDK and put its `bin` folder first on your `PATH`.
 
-Then run either program:
+Then run the getting-started example:
 
 ```sh
-java --add-modules jdk.incubator.json DeserializeTodos.java
+java --add-modules jdk.incubator.json GettingStarted.java
+```
+
+The other examples live in two packages. Run them from the project root:
+
+```sh
+java --add-modules jdk.incubator.json todo/DeserializeTodos.java
 ```
 
 ```sh
-java --add-modules jdk.incubator.json SerializeTodos.java
+java --add-modules jdk.incubator.json todo/SerializeTodos.java
 ```
 
-Java compiles and runs the file in one step, and finds `Todo.java` on its own. Incubator
-modules are not loaded by default, so `--add-modules` is required. `--enable-preview` is not
-needed. Each run starts with a warning that an incubator module is in use. That is expected.
+```sh
+java --add-modules jdk.incubator.json posts/FetchPosts.java
+```
+
+Java compiles and runs the file in one step, and finds the other files in its package on its
+own. Incubator modules are not loaded by default, so `--add-modules` is required.
+`--enable-preview` is not needed. Each run starts with a warning that an incubator module is
+in use. That is expected.
 
 ## Where to look
 
-Start with [Todo.java](Todo.java). It's a record that maps a todo to and from JSON by hand:
+### Getting started
+
+[GettingStarted.java](GettingStarted.java) shows the whole API in a few lines. `Json.parse`
+turns JSON text into a `JsonValue`. `get("name").asString()` reads a value. `JsonObject.of`
+and `JsonString.of` build new JSON, and printing it writes compact JSON text:
+
+```text
+Dan is using Java 28
+{"message":"Hello, Dan!"}
+```
+
+It's a compact source file (`void main()`, no class), so there's nothing else to read.
+
+### Todos: JSON to records and back
+
+The [todo](todo) package starts with [Todo.java](todo/Todo.java). It's a record that maps a
+todo to and from JSON by hand:
 
 - `Todo.from(JsonValue)` reads each field with `get("title")`, then converts it with
   `asString()`, `asInt()`, `asBoolean()`, or `asList()`. A `due` date can be missing or
@@ -47,11 +74,9 @@ Start with [Todo.java](Todo.java). It's a record that maps a todo to and from JS
 - `toJson()` builds each field with `JsonNumber.of`, `JsonString.of`, `JsonBoolean.of`,
   `JsonArray.of`, and `JsonNull.of`, then wraps them with `JsonObject.of`.
 
-Then run the two programs that use it.
-
-[DeserializeTodos.java](DeserializeTodos.java) goes from JSON to Java. `Json.parse` turns a
-JSON text block into a `JsonValue`, and `Todo::from` maps the `todos` array to a `List<Todo>`.
-It prints the owner, then one line per todo:
+[DeserializeTodos.java](todo/DeserializeTodos.java) goes from JSON to Java. It parses a JSON
+text block and maps the `todos` array to a `List<Todo>` with `Todo::from`. It prints the
+owner, then one line per todo:
 
 ```text
 Dan
@@ -60,13 +85,26 @@ Todo[id=2, title=Record the video, done=false, priority=1, tags=[youtube], due=2
 Todo[id=3, title=Write the blog post, done=false, priority=3, tags=[], due=null]
 ```
 
-[SerializeTodos.java](SerializeTodos.java) goes from Java to JSON. It turns a `List<Todo>` into
-a `JsonArray`, then prints it twice: compact with `toString()`, then indented with
-`Json.toDisplayString(json, "  ")`. One title contains quotes, and the output escapes them for
-you.
+[SerializeTodos.java](todo/SerializeTodos.java) goes from Java to JSON. It turns a
+`List<Todo>` into a `JsonArray`, then prints it twice: compact with `toString()`, then
+indented with `Json.toDisplayString(json, "  ")`. One title contains quotes, and the output
+escapes them for you.
 
-Both programs are compact source files (`void main()`, no class). That keeps the focus on the
-JSON code.
+### Posts: JSON from a real API
+
+The [posts](posts) package fetches JSON over HTTP, still with no libraries.
+[FetchPosts.java](posts/FetchPosts.java) uses the JDK's `HttpClient` to get
+`https://jsonplaceholder.typicode.com/posts`. It parses the response body and maps each item
+to a [Post](posts/Post.java) record. It prints the count and the first five titles:
+
+```text
+Fetched 100 posts
+1: sunt aut facere repellat provident occaecati excepturi optio reprehenderit
+2: qui est esse
+...
+```
+
+This one needs an internet connection.
 
 ## What JEP 540 adds
 
@@ -92,8 +130,8 @@ The JEP keeps the API small on purpose. It leaves out:
 
 - **Replacing Jackson or Gson.** The JEP says it is not trying to replace established JSON
   libraries. If an app outgrows this API, moving to a library is the expected path.
-- **Data binding.** Nothing maps JSON to your own classes or records. That is why `Todo.java`
-  does it by hand. With a library like Jackson, each direction is usually a single call.
+- **Data binding.** Nothing maps JSON to your own classes or records. That is why `Todo` and
+  `Post` do it by hand. With a library like Jackson, each direction is usually a single call.
 - **Streaming.** The whole document is parsed into memory. There is no token-by-token reader
   for very large files.
 - **Options and variants.** There are no settings, no comments in JSON, and no lenient mode.
