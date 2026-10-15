@@ -55,6 +55,10 @@ java --add-modules jdk.incubator.json features/ErrorMessages.java
 java --add-modules jdk.incubator.json features/Numbers.java
 ```
 
+```sh
+java --add-modules jdk.incubator.json features/MissingAndNull.java
+```
+
 Java compiles and runs the file in one step, and finds the other files in its package on its
 own. Incubator modules are not loaded by default, so `--add-modules` is required.
 `--enable-preview` is not needed. Each run starts with a warning that an incubator module is
@@ -120,7 +124,7 @@ This one needs an internet connection.
 
 ### Features: what makes this API different
 
-The [features](features) package has three short programs, one per feature.
+The [features](features) package has four short programs, one per feature.
 
 [PatternMatching.java](features/PatternMatching.java) uses a `switch` over the six JSON types.
 `JsonValue` is a sealed interface, so the compiler knows every case is covered and no
@@ -157,6 +161,27 @@ reads a number too big for a `long`. Adding prices with `BigDecimal` stays exact
 total with double: 0.30000000000000004
 total with BigDecimal: 0.30
 {"total":0.30}
+```
+
+[MissingAndNull.java](features/MissingAndNull.java) covers the two ways a value can be empty.
+A member can be missing, like `email` for Linus. Or it can be there with a JSON `null`, like
+`email` for Ada. Plain `get()` throws on the first, and `asString()` throws on the second.
+`tryGet` and `tryValue` handle them with an `Optional`:
+
+```text
+tryGet on a missing member: Optional.empty
+tryGet on a null member: Optional[null]
+tryValue on null: Optional.empty
+```
+
+`tryGet` finds the `null` member, because the member exists. So to treat missing and `null`
+the same way, chain the two:
+
+```java
+String email = user.tryGet("email")
+        .flatMap(JsonValue::tryValue)
+        .map(JsonValue::asString)
+        .orElse("no email");
 ```
 
 ## What JEP 540 adds
