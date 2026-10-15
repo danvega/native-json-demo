@@ -183,11 +183,40 @@ The JEP keeps the API small on purpose. It leaves out:
 
 - **Replacing Jackson or Gson.** The JEP says it is not trying to replace established JSON
   libraries. If an app outgrows this API, moving to a library is the expected path.
-- **Data binding.** Nothing maps JSON to your own classes or records. That is why `Todo` and
-  `Post` do it by hand. With a library like Jackson, each direction is usually a single call.
+- **Data binding.** Nothing maps JSON to your own classes or records. See
+  [Data binding: you map by hand](#data-binding-you-map-by-hand) below.
 - **Streaming.** The whole document is parsed into memory. There is no token-by-token reader
   for very large files.
 - **Options and variants.** There are no settings, no comments in JSON, and no lenient mode.
+
+### Data binding: you map by hand
+
+With Jackson, `mapper.readValue(json, Post.class)` creates a record for you. It matches JSON
+names to field names, and annotations like `@JsonProperty` and `@JsonIgnore` handle the
+exceptions. This API has none of that: no automatic mapping, no annotations, no reflection.
+
+Instead, you write the mapping yourself, like `Todo.from()` and `Post.from()` in this repo.
+Because each field is mapped in code, a JSON name that doesn't match your Java name needs no
+annotation. You just read a different key:
+
+```java
+record Post(int authorId, String headline) {
+
+    static Post from(JsonValue json) {
+        return new Post(
+                json.get("userId").asInt(),
+                json.get("title").asString());
+    }
+}
+```
+
+The same goes for the other things annotations usually do. To skip a field, don't read it.
+For a default value, use `tryGet` with `orElse`. Writing JSON works the same way in
+`toJson()`: you pick each key name.
+
+The trade-off is a few lines of code per field. In return, the mapping is plain Java you can
+read and debug. If you have many types, or you want annotations, use a library like Jackson.
+The JEP expects that.
 
 ## Good to know
 
